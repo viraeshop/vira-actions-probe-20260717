@@ -15,7 +15,7 @@ jobs:
   smoke:
     runs-on: [self-hosted, linux, x64, vira-probe]
     steps:
-      - run: echo probe-runner-ok && uname -a && free -h | head -2
+      - run: echo probe-runner-ok && free -h | head -2
 
   customer-web:
     needs: smoke
@@ -80,12 +80,13 @@ jobs:
             src/modules/payment_settlement/services/quantitySettlementBridge.test.js
 
   customer-flutter:
+    needs: backend
+    runs-on: [self-hosted, linux, x64, vira-probe]
     env:
       ANDROID_HOME: /opt/android-sdk
       ANDROID_SDK_ROOT: /opt/android-sdk
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-    needs: backend
-    runs-on: [self-hosted, linux, x64, vira-probe]
+      GRADLE_OPTS: -Xmx1536m -Dorg.gradle.daemon=false
     defaults:
       run:
         working-directory: repo/customer
@@ -105,15 +106,20 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
       - run: flutter test
+      - name: Cap Gradle heap for small runner
+        run: |
+          mkdir -p android
+          printf '%s\n' 'org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError' 'org.gradle.daemon=false' 'org.gradle.parallel=false' 'org.gradle.workers.max=2' >> android/gradle.properties
       - run: flutter build apk --debug
 
   admin-flutter:
+    needs: customer-flutter
+    runs-on: [self-hosted, linux, x64, vira-probe]
     env:
       ANDROID_HOME: /opt/android-sdk
       ANDROID_SDK_ROOT: /opt/android-sdk
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-    needs: customer-flutter
-    runs-on: [self-hosted, linux, x64, vira-probe]
+      GRADLE_OPTS: -Xmx1536m -Dorg.gradle.daemon=false
     defaults:
       run:
         working-directory: repo/admin
@@ -133,4 +139,8 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
       - run: flutter test
+      - name: Cap Gradle heap for small runner
+        run: |
+          mkdir -p android
+          printf '%s\n' 'org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError' 'org.gradle.daemon=false' 'org.gradle.parallel=false' 'org.gradle.workers.max=2' >> android/gradle.properties
       - run: flutter build apk --debug
