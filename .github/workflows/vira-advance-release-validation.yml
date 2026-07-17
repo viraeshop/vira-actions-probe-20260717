@@ -86,7 +86,7 @@ jobs:
       ANDROID_HOME: /opt/android-sdk
       ANDROID_SDK_ROOT: /opt/android-sdk
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-      GRADLE_OPTS: -Xmx1536m -Dorg.gradle.daemon=false
+      GRADLE_OPTS: -Xmx1024m -Dorg.gradle.daemon=false
     defaults:
       run:
         working-directory: repo/customer
@@ -109,7 +109,7 @@ jobs:
       - name: Cap Gradle heap for small runner
         run: |
           mkdir -p android
-          printf '%s\n' 'org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError' 'org.gradle.daemon=false' 'org.gradle.parallel=false' 'org.gradle.workers.max=2' >> android/gradle.properties
+          printf '%s\n' 'org.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError' 'org.gradle.daemon=false' 'org.gradle.parallel=false' 'org.gradle.workers.max=2' >> android/gradle.properties
       - run: flutter build apk --debug
 
   admin-flutter:
@@ -119,7 +119,7 @@ jobs:
       ANDROID_HOME: /opt/android-sdk
       ANDROID_SDK_ROOT: /opt/android-sdk
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-      GRADLE_OPTS: -Xmx1536m -Dorg.gradle.daemon=false
+      GRADLE_OPTS: -Xmx1024m -Dorg.gradle.daemon=false
     defaults:
       run:
         working-directory: repo/admin
@@ -142,5 +142,5 @@ jobs:
       - name: Cap Gradle heap for small runner
         run: |
           mkdir -p android
-          printf '%s\n' 'org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError' 'org.gradle.daemon=false' 'org.gradle.parallel=false' 'org.gradle.workers.max=2' >> android/gradle.properties
+          printf '%s\n' 'org.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError' 'org.gradle.daemon=false' 'org.gradle.parallel=false' 'org.gradle.workers.max=2' >> android/gradle.properties
       - run: flutter build apk --debug
