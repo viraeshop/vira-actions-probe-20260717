@@ -5,7 +5,7 @@ on:
       target_sha:
         description: Private repo commit SHA
         required: true
-        default: "7a010837619b9c47eb50661078cad5773dc30102"
+        default: "2f9a1661ed520d5182b40ea2f221ed9164e8e92d"
 permissions:
   contents: read
 concurrency:
