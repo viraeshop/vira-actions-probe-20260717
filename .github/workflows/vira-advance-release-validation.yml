@@ -1,0 +1,124 @@
+name: Vira Advance Release Validation (Probe)
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Private repo commit SHA
+        required: true
+        default: "7a010837619b9c47eb50661078cad5773dc30102"
+permissions:
+  contents: read
+concurrency:
+  group: vira-probe-release-validation
+  cancel-in-progress: true
+jobs:
+  smoke:
+    runs-on: [self-hosted, linux, x64, vira-probe]
+    steps:
+      - run: echo probe-runner-ok && uname -a && free -h | head -2
+
+  customer-web:
+    needs: smoke
+    runs-on: [self-hosted, linux, x64, vira-probe]
+    defaults:
+      run:
+        working-directory: repo/customer-web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: viraeshop/Vira-advance
+          ref: ${{ github.event.inputs.target_sha }}
+          token: ${{ secrets.GH_PRIVATE_REPO_TOKEN }}
+          path: repo
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
+      - name: Production build
+        run: |
+          unset NODE_ENV
+          npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:5002/api
+          NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3001
+          CUSTOMER_WEB_ENFORCE_HTTPS: "0"
+          NEXT_PUBLIC_CUSTOMER_WEB_ENFORCE_HTTPS: "0"
+
+  backend:
+    needs: customer-web
+    runs-on: [self-hosted, linux, x64, vira-probe]
+    defaults:
+      run:
+        working-directory: repo/server
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: viraeshop/Vira-advance
+          ref: ${{ github.event.inputs.target_sha }}
+          token: ${{ secrets.GH_PRIVATE_REPO_TOKEN }}
+          path: repo
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: npm run build --if-present
+      - name: Unit tests
+        run: |
+          node --test \
+            src/utils/cartQuantityPolicy.test.js \
+            src/utils/customerStagingOtp.test.js \
+            src/utils/checkoutFingerprint.test.js \
+            src/services/checkoutIdempotencyService.test.js \
+            src/utils/cartInventoryPriceAuthority.test.js \
+            src/utils/orderSource.test.js \
+            src/modules/payment_settlement/services/invoiceFinancialAuthority.test.js \
+            src/modules/payment_settlement/utils/quantityChangeWorkflow.test.js \
+            src/modules/payment_settlement/services/quantitySettlementBridge.test.js
+
+  customer-flutter:
+    needs: backend
+    runs-on: [self-hosted, linux, x64, vira-probe]
+    defaults:
+      run:
+        working-directory: repo/customer
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: viraeshop/Vira-advance
+          ref: ${{ github.event.inputs.target_sha }}
+          token: ${{ secrets.GH_PRIVATE_REPO_TOKEN }}
+          path: repo
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.44.4"
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
+      - run: flutter test
+      - run: flutter build apk --debug
+
+  admin-flutter:
+    needs: customer-flutter
+    runs-on: [self-hosted, linux, x64, vira-probe]
+    defaults:
+      run:
+        working-directory: repo/admin
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: viraeshop/Vira-advance
+          ref: ${{ github.event.inputs.target_sha }}
+          token: ${{ secrets.GH_PRIVATE_REPO_TOKEN }}
+          path: repo
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.44.4"
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
+      - run: flutter test
+      - run: flutter build apk --debug
